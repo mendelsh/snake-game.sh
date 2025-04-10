@@ -1,9 +1,14 @@
 #!/bin/bash
 
-rows=25
-cols=53
+rows=20
+cols=40
 
 snake_position=("5 20" "5 19" "5 18")
+snake_length=3
+fruit_position=""
+base_time=0.5
+speed="$base_time"
+# decay=0.85
 
 clear
 stty -echo
@@ -34,6 +39,39 @@ for ((row = 0; row < rows; row++)); do
 done
 
 
+display_length() {
+    tput cup $((rows + 1)) 0
+    echo -n "Length: $snake_length"
+}
+display_length
+
+
+generate_random_fruit() {
+    while true; do
+        local row=$((RANDOM % (rows-2) + 1))
+        local col=$((RANDOM % (cols-2) + 1))
+        local position="$row $col"
+        if [[ ! " ${snake_position[@]} " =~ " $position " ]]; then
+            fruit_position="$position"
+            tput cup $row $col
+            echo -n "$"
+            break
+        fi
+    done
+}
+
+
+eat_fruit() {
+    if [[ ${snake_position[0]} == "$fruit_position" ]]; then
+        snake_position+=("${snake_position[-1]}")
+        ((snake_length++))
+        generate_random_fruit
+        display_length
+        calculate_speed
+    fi
+}
+
+
 
 draw_snake() {
     read y x <<< ${snake_position[0]}
@@ -60,6 +98,18 @@ move_snake() {
         "r") ((x++)) ;;
     esac
 
+    if ((y <= 0)); then
+        y=$((rows-2))
+    elif ((y >= rows-1)); then
+        y=1
+    fi
+
+    if ((x <= 0)); then
+        x=$((cols-2))
+    elif ((x >= cols-1)); then
+        x=1
+    fi
+
     new_head="$y $x"
 
     len=${#snake_position[@]}
@@ -73,6 +123,7 @@ move_snake() {
     echo -n " "
 }
 
+
 opposite_direction() {
     case "$1" in
         u) echo "d" ;;
@@ -82,9 +133,11 @@ opposite_direction() {
     esac
 }
 
+
 flush_input_buffer() {
     while read -rsn1 -t 0.005; do :; done
 }
+
 
 direction="r"
 move_and_slide() {
@@ -112,11 +165,38 @@ move_and_slide() {
 }
 
 
+game_over() {
+  local head_pos="${snake_position[0]}"
+
+  for ((i=1; i<${#snake_position[@]}; i++)); do
+    if [[ "${snake_position[$i]}" == "$head_pos" ]]; then
+      tput cup $((rows/2)) $((cols/2-4))
+      echo -n "GAME OVER"
+      tput cup $((rows/2+1)) $((cols/2-9))
+      echo -n "Press any key to exit"
+      stty echo
+      tput cnorm
+      read -n1
+      clear
+      exit 0
+    fi
+  done
+}
+
+
+calculate_speed() {
+    speed=$(echo "$speed / 1.1" | bc -l)
+}
+
+
 flush_input_buffer
+generate_random_fruit
 while true; do
+    eat_fruit
     move_and_slide
     draw_snake
-    flush_input_buffer
-    sleep 1
+    game_over
+    # flush_input_buffer
+    sleep "$speed"
 done
 
