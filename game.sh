@@ -1,5 +1,9 @@
 #!/bin/bash
 
+export TERM=xterm
+export NCURSES_NO_UTF8_ACS=1
+
+
 rows=20
 cols=40
 
@@ -185,7 +189,7 @@ game_over() {
 
 
 calculate_speed() {
-    speed=$(echo "$speed / 1.1" | bc -l)
+    speed=$(awk "BEGIN {printf \"%.4f\", $speed / 1.1}")
 }
 
 
